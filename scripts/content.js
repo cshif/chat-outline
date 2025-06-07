@@ -132,6 +132,19 @@ const scanArticles = () => {
         overflow: hidden;
         text-overflow: ellipsis;
       }
+      
+      /* ChatGPT specific dark mode detection */
+      html.dark #chat-outline-btn img {
+        filter: invert(1) brightness(0.8);
+      }
+      html.dark #chat-outline-dropdown {
+        background-color: #2f2f2f;
+        color: #fff;
+        border-color: #565869;
+      }
+      html.dark #chat-outline-dropdown ul li:hover {
+        background-color: rgba(255, 255, 0, 0.15);
+      }
   `;
   document.head.appendChild(style);
 
