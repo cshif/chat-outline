@@ -1,7 +1,7 @@
 {
   "name": "chat-outline",
   "description": "Outline a ChatGPT chat",
-  "version": "1.0",
+  "version": "1.1",
   "manifest_version": 3,
   "icons": {
     "16": "images/icon-16.png",
