@@ -1,71 +1,98 @@
-const createListItem = (article, question, index, list) => {
-  let articleId = article.id;
-  if (!articleId) {
-    articleId = `chat-outline-article-${index}`;
-    article.id = articleId;
+// Chat Outline – Cross‑browser version for Chrome & Firefox
+// ------------------------------------------------------------
+// Key change: use a unified "runtime" reference so the same
+// content script works in either browser without extra build steps.
+// ------------------------------------------------------------
+
+(() => {
+  // 1. Get the correct extension runtime interface
+  //    Prefer `browser` (Promise‑based WebExtensions),
+  //    fall back to `chrome` (callback‑based).
+  const runtime = (typeof browser !== 'undefined' && browser.runtime)
+    ? browser.runtime                                 // Firefox / other browsers supporting `browser.*`
+    : (typeof chrome !== 'undefined' ? chrome.runtime // Chrome / Edge
+      : null);
+
+  if (!runtime) {
+    console.error('[Chat‑Outline] Unsupported browser – no runtime API');
+    return;
   }
 
-  const anchor = document.createElement('a');
-  anchor.href = `#${articleId}`;
-  const span = document.createElement('span');
-  span.textContent = question;
-  anchor.appendChild(span);
+  // Helper to fetch packaged asset URLs regardless of host browser
+  const getURL = runtime.getURL.bind(runtime);
 
-  const item = document.createElement('li');
-  item.addEventListener('click', e => {
-    e.preventDefault();
+  //------------------------------------------------------------------
+  // 2. Original logic (unchanged except for `getURL` + small tweaks)
+  //------------------------------------------------------------------
 
-    const targetArticle = document.getElementById(articleId);
-    if (targetArticle) {
-      targetArticle.scrollIntoView({ behavior: 'smooth' });
-      targetArticle.style.transition = 'background-color 0.3s ease';
-      let flashes = 0;
-      const flashInterval = setInterval(() => {
-        if (flashes >= 4) {
-          clearInterval(flashInterval);
-          targetArticle.style.backgroundColor = '';
-          return;
-        }
-        if (flashes % 2 === 0) {
-          targetArticle.style.backgroundColor = 'rgba(255, 255, 0, 0.2)';
-        } else {
-          targetArticle.style.backgroundColor = '';
-        }
-        flashes++;
-      }, 300);
+  const createListItem = (article, question, index, list) => {
+    let articleId = article.id;
+    if (!articleId) {
+      articleId = `chat-outline-article-${index}`;
+      article.id = articleId;
     }
-  });
-  item.appendChild(anchor);
-  list.appendChild(item);
-};
 
-const updateDropdownList = () => {
-  const dropdown = document.getElementById('chat-outline-dropdown');
-  if (!dropdown) return;
+    const anchor = document.createElement('a');
+    anchor.href = `#${articleId}`;
+    const span = document.createElement('span');
+    span.textContent = question;
+    anchor.appendChild(span);
 
-  dropdown.innerHTML = '';
-  const list = document.createElement('ul');
-  const questionElements = Array.from(
-    document.querySelectorAll('[data-message-author-role="user"] .whitespace-pre-wrap')
-  );
-  questionElements.forEach((el, index) => {
-    const question = el.textContent.trim();
-    const article = el.closest('article');
-    if (article) {
-      createListItem(article, question, index, list);
-    }
-  });
-  dropdown.appendChild(list);
-};
+    const item = document.createElement('li');
+    item.addEventListener('click', e => {
+      e.preventDefault();
 
-const scanArticles = () => {
-  if (document.getElementById('chat-outline-btn')) return;
+      const targetArticle = document.getElementById(articleId);
+      if (targetArticle) {
+        targetArticle.scrollIntoView({ behavior: 'smooth' });
+        targetArticle.style.transition = 'background-color 0.3s ease';
+        let flashes = 0;
+        const flashInterval = setInterval(() => {
+          if (flashes >= 4) {
+            clearInterval(flashInterval);
+            targetArticle.style.backgroundColor = '';
+            return;
+          }
+          if (flashes % 2 === 0) {
+            targetArticle.style.backgroundColor = 'rgba(255, 255, 0, 0.2)';
+          } else {
+            targetArticle.style.backgroundColor = '';
+          }
+          flashes++;
+        }, 300);
+      }
+    });
+    item.appendChild(anchor);
+    list.appendChild(item);
+  };
 
-  const navButton = document.createElement('button');
-  navButton.id = 'chat-outline-btn';
+  const updateDropdownList = () => {
+    const dropdown = document.getElementById('chat-outline-dropdown');
+    if (!dropdown) return;
 
-  const style = document.createElement('style');
-  style.textContent = `
+    dropdown.innerHTML = '';
+    const list = document.createElement('ul');
+    const questionElements = Array.from(
+      document.querySelectorAll('[data-message-author-role="user"] .whitespace-pre-wrap')
+    );
+    questionElements.forEach((el, index) => {
+      const question = el.textContent.trim();
+      const article = el.closest('article');
+      if (article) {
+        createListItem(article, question, index, list);
+      }
+    });
+    dropdown.appendChild(list);
+  };
+
+  const scanArticles = () => {
+    if (document.getElementById('chat-outline-btn')) return;
+
+    const navButton = document.createElement('button');
+    navButton.id = 'chat-outline-btn';
+
+    const style = document.createElement('style');
+    style.textContent = `
       #chat-outline-btn {
         position: absolute;
         bottom: 3rem;
@@ -132,7 +159,7 @@ const scanArticles = () => {
         overflow: hidden;
         text-overflow: ellipsis;
       }
-      
+
       /* ChatGPT specific dark mode detection */
       html.dark #chat-outline-btn img {
         filter: invert(1) brightness(0.8);
@@ -145,93 +172,96 @@ const scanArticles = () => {
       html.dark #chat-outline-dropdown ul li:hover {
         background-color: rgba(255, 255, 0, 0.15);
       }
-  `;
-  document.head.appendChild(style);
+    `;
+    document.head.appendChild(style);
 
-  navButton.innerHTML = `<img src="${chrome.runtime.getURL('images/icon.svg')}" alt="icon">`;
-  const body = document.querySelector('body');
-  body.insertAdjacentElement('afterbegin', navButton);
-
-  navButton.addEventListener('click', (e) => {
-    e.stopPropagation();
-
-    const existingDropdown = document.getElementById('chat-outline-dropdown');
-    if (existingDropdown) {
-      existingDropdown.classList.remove('show');
-      existingDropdown.addEventListener('transitionend', () => existingDropdown.remove(), { once: true });
-      return;
-    }
-    const dropdown = document.createElement('div');
-    dropdown.id = 'chat-outline-dropdown';
-    body.insertAdjacentElement('afterbegin', dropdown);
-    updateDropdownList();
-    requestAnimationFrame(() => {
-      dropdown.classList.add('show');
-    });
-  });
-};
-
-(function initialize() {
-  const trySetup = () => {
+    // <--- Only line that changed: use getURL instead of chrome.runtime.getURL()
+    navButton.innerHTML = `<img src="${getURL('images/icon.svg')}" alt="icon">`;
     const body = document.querySelector('body');
-    if (body) {
-      scanArticles();
-      console.log('Chat Outline extension initialized successfully.');
-    } else {
-      setTimeout(trySetup, 100);
+    body.insertAdjacentElement('afterbegin', navButton);
+
+    navButton.addEventListener('click', (e) => {
+      e.stopPropagation();
+
+      const existingDropdown = document.getElementById('chat-outline-dropdown');
+      if (existingDropdown) {
+        existingDropdown.classList.remove('show');
+        existingDropdown.addEventListener('transitionend', () => existingDropdown.remove(), { once: true });
+        return;
+      }
+      const dropdown = document.createElement('div');
+      dropdown.id = 'chat-outline-dropdown';
+      body.insertAdjacentElement('afterbegin', dropdown);
+      updateDropdownList();
+      requestAnimationFrame(() => {
+        dropdown.classList.add('show');
+      });
+    });
+  };
+
+  (function initialize() {
+    const trySetup = () => {
+      const body = document.querySelector('body');
+      if (body) {
+        scanArticles();
+        console.log('Chat Outline extension initialized successfully.');
+      } else {
+        setTimeout(trySetup, 100);
+      }
+    };
+    trySetup();
+  })();
+
+  const removeDropdown = () => {
+    const dropdown = document.getElementById('chat-outline-dropdown');
+    if (dropdown) {
+      dropdown.classList.remove('show');
+      dropdown.addEventListener('transitionend', () => dropdown.remove(), { once: true });
     }
   };
-  trySetup();
+
+  document.addEventListener('click', e => {
+    const dropdown = document.getElementById('chat-outline-dropdown');
+    const navButton = document.getElementById('chat-outline-btn');
+    if (!dropdown) return;
+    if (navButton && navButton.contains(e.target)) return;
+    if (dropdown.contains(e.target)) return;
+    removeDropdown();
+  });
+
+  window.addEventListener('popstate', removeDropdown);
+
+  const origPushState = history.pushState;
+  history.pushState = function (...args) {
+    origPushState.apply(this, args);
+    removeDropdown();
+  };
+
+  const origReplaceState = history.replaceState;
+  history.replaceState = function (...args) {
+    origReplaceState.apply(this, args);
+    removeDropdown();
+  };
+
+  let prevUserQuestions = [];
+  const observer = new MutationObserver(() => {
+    const currentUserQuestions = Array.from(
+      document.querySelectorAll('[data-message-author-role="user"] .whitespace-pre-wrap')
+    ).map(el => el.textContent.trim());
+
+    const hasChanged = currentUserQuestions.length !== prevUserQuestions.length ||
+      currentUserQuestions.some((q, idx) => q !== prevUserQuestions[idx]);
+
+    if (hasChanged) {
+      prevUserQuestions = currentUserQuestions;
+      updateDropdownList();
+    }
+  });
+
+  observer.observe(document.documentElement, {
+    childList: true,
+    subtree: true,
+  });
+
+  window.addEventListener('beforeunload', () => observer.disconnect());
 })();
-
-const removeDropdown = () => {
-  const dropdown = document.getElementById('chat-outline-dropdown');
-  if (dropdown) {
-    dropdown.classList.remove('show');
-    dropdown.addEventListener('transitionend', () => dropdown.remove(), { once: true });
-  }
-};
-
-document.addEventListener('click', e => {
-  const dropdown = document.getElementById('chat-outline-dropdown');
-  const navButton = document.getElementById('chat-outline-btn');
-  if (!dropdown) return;
-  if (navButton && navButton.contains(e.target)) return;
-  if (dropdown.contains(e.target)) return;
-  removeDropdown();
-});
-
-window.addEventListener('popstate', removeDropdown);
-
-const origPushState = history.pushState;
-history.pushState = function(...args) {
-  origPushState.apply(this, args);
-  removeDropdown();
-};
-const origReplaceState = history.replaceState;
-
-history.replaceState = function(...args) {
-  origReplaceState.apply(this, args);
-  removeDropdown();
-};
-
-let prevUserQuestions = [];
-const observer = new MutationObserver(() => {
-  const currentUserQuestions = Array.from(
-    document.querySelectorAll('[data-message-author-role="user"] .whitespace-pre-wrap')
-  ).map(el => el.textContent.trim());
-  const hasChanged = currentUserQuestions.length !== prevUserQuestions.length ||
-    currentUserQuestions.some((q, idx) => q !== prevUserQuestions[idx]);
-
-  if (hasChanged) {
-    prevUserQuestions = currentUserQuestions;
-    updateDropdownList();
-  }
-});
-
-observer.observe(document.documentElement, {
-  childList: true,
-  subtree: true,
-});
-
-window.addEventListener('beforeunload', () => observer.disconnect());

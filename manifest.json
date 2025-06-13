@@ -11,15 +11,29 @@
   },
   "content_scripts": [
     {
-      "js": ["scripts/content.js"],
-      "matches": ["*://chatgpt.com/*"],
+      "js": [
+        "scripts/content.js"
+      ],
+      "matches": [
+        "*://chatgpt.com/*"
+      ],
       "run_at": "document_end"
     }
   ],
   "web_accessible_resources": [
     {
-      "resources": ["images/icon.svg"],
-      "matches": ["*://chatgpt.com/*"]
+      "resources": [
+        "images/icon.svg"
+      ],
+      "matches": [
+        "*://chatgpt.com/*"
+      ]
     }
-  ]
+  ],
+  "applications": {
+    "gecko": {
+      "id": "eva.ychuang@gmail.com",
+      "strict_min_version": "109.0"
+    }
+  }
 }
