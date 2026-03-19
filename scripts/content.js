@@ -1,12 +1,33 @@
-const createListItem = (article, question, index, list) => {
-  let articleId = article.id;
-  if (!articleId) {
-    articleId = `chat-outline-article-${index}`;
-    article.id = articleId;
+const USER_TURN_SELECTOR = '[data-turn="user"]';
+const USER_MESSAGE_TEXT_SELECTORS = [
+  '[data-message-author-role="user"] .user-message-bubble-color .whitespace-pre-wrap',
+  '[data-message-author-role="user"] .whitespace-pre-wrap',
+  '.whitespace-pre-wrap',
+];
+
+const getUserQuestionEntries = () => {
+  return Array.from(document.querySelectorAll(USER_TURN_SELECTOR))
+    .map(turn => {
+      const textElement = USER_MESSAGE_TEXT_SELECTORS
+        .map(selector => turn.querySelector(selector))
+        .find(Boolean);
+      return {
+        turn,
+        question: textElement?.textContent?.trim() || '',
+      };
+    })
+    .filter(entry => entry.question);
+};
+
+const createListItem = (turnElement, question, index, list) => {
+  let turnId = turnElement.id;
+  if (!turnId) {
+    turnId = `chat-outline-turn-${index}`;
+    turnElement.id = turnId;
   }
 
   const anchor = document.createElement('a');
-  anchor.href = `#${articleId}`;
+  anchor.href = `#${turnId}`;
   const span = document.createElement('span');
   span.textContent = question;
   anchor.appendChild(span);
@@ -15,21 +36,21 @@ const createListItem = (article, question, index, list) => {
   item.addEventListener('click', e => {
     e.preventDefault();
 
-    const targetArticle = document.getElementById(articleId);
-    if (targetArticle) {
-      targetArticle.scrollIntoView({ behavior: 'smooth' });
-      targetArticle.style.transition = 'background-color 0.3s ease';
+    const targetTurn = document.getElementById(turnId);
+    if (targetTurn) {
+      targetTurn.scrollIntoView({ behavior: 'smooth' });
+      targetTurn.style.transition = 'background-color 0.3s ease';
       let flashes = 0;
       const flashInterval = setInterval(() => {
         if (flashes >= 4) {
           clearInterval(flashInterval);
-          targetArticle.style.backgroundColor = '';
+          targetTurn.style.backgroundColor = '';
           return;
         }
         if (flashes % 2 === 0) {
-          targetArticle.style.backgroundColor = 'rgba(255, 255, 0, 0.2)';
+          targetTurn.style.backgroundColor = 'rgba(255, 255, 0, 0.2)';
         } else {
-          targetArticle.style.backgroundColor = '';
+          targetTurn.style.backgroundColor = '';
         }
         flashes++;
       }, 300);
@@ -45,15 +66,9 @@ const updateDropdownList = () => {
 
   dropdown.innerHTML = '';
   const list = document.createElement('ul');
-  const questionElements = Array.from(
-    document.querySelectorAll('[data-message-author-role="user"] .whitespace-pre-wrap')
-  );
-  questionElements.forEach((el, index) => {
-    const question = el.textContent.trim();
-    const article = el.closest('article');
-    if (article) {
-      createListItem(article, question, index, list);
-    }
+  const questionEntries = getUserQuestionEntries();
+  questionEntries.forEach((entry, index) => {
+    createListItem(entry.turn, entry.question, index, list);
   });
   dropdown.appendChild(list);
 };
@@ -217,9 +232,7 @@ history.replaceState = function(...args) {
 
 let prevUserQuestions = [];
 const observer = new MutationObserver(() => {
-  const currentUserQuestions = Array.from(
-    document.querySelectorAll('[data-message-author-role="user"] .whitespace-pre-wrap')
-  ).map(el => el.textContent.trim());
+  const currentUserQuestions = getUserQuestionEntries().map(entry => entry.question);
   const hasChanged = currentUserQuestions.length !== prevUserQuestions.length ||
     currentUserQuestions.some((q, idx) => q !== prevUserQuestions[idx]);
 
