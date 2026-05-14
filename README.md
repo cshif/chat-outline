@@ -4,6 +4,12 @@
 
 ![demo](docs/chat-outline.gif)
 
+## ⚠️ Current Status
+
+ChatGPT now uses virtual scrolling for conversations, so messages outside the visible area may not exist in the page DOM. Because this extension depends on the DOM to build the outline, it can no longer reliably provide a complete or stable outline for long conversations.
+
+As of today, this repository is no longer maintained and will not receive further updates.
+
 ## ✨ Features
 
 | Feature | Description                                                 |
